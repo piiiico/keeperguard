@@ -1,0 +1,4 @@
+# ledger of the recorded run is committed on purpose
+node_modules
+.env
+*.tampered

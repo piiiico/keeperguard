@@ -1,0 +1,16 @@
+{
+  "name": "keeperguard",
+  "version": "0.1.0",
+  "description": "Pre-flight execution guard between an autonomous agent's decision and KeeperHub's Direct Execution API: policy caps, simulate-before-broadcast, decision-derived idempotency, hash-chained audit ledger.",
+  "type": "module",
+  "module": "src/index.ts",
+  "license": "MIT",
+  "scripts": {
+    "demo": "bun bin/demo.ts",
+    "test": "bun test"
+  },
+  "keywords": ["keeperhub", "onchain", "ai-agent", "idempotency", "audit-log", "base"],
+  "devDependencies": {
+    "@types/bun": "^1.3.14"
+  }
+}
