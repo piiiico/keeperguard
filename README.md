@@ -131,8 +131,6 @@ you want the agent to see why an action is unavailable before it commits to it.
 
 ## KeeperHub endpoints this project actually calls
 
-
-
 Only these two. Both have been run live; neither is transcribed from docs.
 
 | Endpoint | Used for |
