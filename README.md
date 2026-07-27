@@ -8,8 +8,13 @@ Built for the [KeeperHub — Agents Onchain](https://dorahacks.io/hackathon/agen
 **Proof of execution (Base mainnet, real funds):**
 [`0xdef6e31bd0dcfcecff88f41bd89c7f19fd96c981b4f2f6e48d3c1645f8b30b1c`](https://basescan.org/tx/0xdef6e31bd0dcfcecff88f41bd89c7f19fd96c981b4f2f6e48d3c1645f8b30b1c)
 
-That transaction was produced by `bin/demo.ts` in this repo, unattended, with no
-human in the loop at any point.
+A second, later run landed
+[`0x43ae139c…`](https://basescan.org/tx/0x43ae139cf8e1cf396abf21d5a5dbf2f0e956229c78eff4e080fc98709292067b)
+— the one the hackathon submission quotes balances for. Both are real, both were
+relayer-sponsored, and both are listed here so the two accounts cannot disagree.
+
+Those transactions were produced by `bin/demo.ts` in this repo, unattended, with
+no human in the loop at any point.
 
 ---
 
