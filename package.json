@@ -1,16 +1,30 @@
 {
   "name": "keeperguard",
-  "version": "0.1.0",
-  "description": "Pre-flight execution guard between an autonomous agent's decision and KeeperHub's Direct Execution API: policy caps, simulate-before-broadcast, decision-derived idempotency, hash-chained audit ledger.",
+  "version": "0.2.0",
+  "description": "Execution guard between an autonomous agent's decision and KeeperHub's Direct Execution API — as a library and as an MCP server: policy caps the model cannot raise, simulate-before-broadcast, decision-derived idempotency, hash-chained audit ledger.",
   "type": "module",
   "module": "src/index.ts",
   "license": "MIT",
   "scripts": {
     "demo": "bun bin/demo.ts",
+    "mcp": "bun bin/mcp-server.ts",
+    "mcp:demo": "bun bin/mcp-demo.ts",
     "test": "bun test"
   },
-  "keywords": ["keeperhub", "onchain", "ai-agent", "idempotency", "audit-log", "base"],
+  "keywords": [
+    "keeperhub",
+    "onchain",
+    "ai-agent",
+    "mcp",
+    "mcp-server",
+    "idempotency",
+    "audit-log",
+    "base"
+  ],
   "devDependencies": {
     "@types/bun": "^1.3.14"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0"
   }
 }

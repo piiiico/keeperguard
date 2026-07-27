@@ -5,16 +5,15 @@ and [KeeperHub](https://keeperhub.com)'s Direct Execution API.
 
 Built for the [KeeperHub — Agents Onchain](https://dorahacks.io/hackathon/agents-onchain) hackathon.
 
-**Proof of execution (Base mainnet, real funds):**
-[`0xdef6e31bd0dcfcecff88f41bd89c7f19fd96c981b4f2f6e48d3c1645f8b30b1c`](https://basescan.org/tx/0xdef6e31bd0dcfcecff88f41bd89c7f19fd96c981b4f2f6e48d3c1645f8b30b1c)
+**Proof of execution — Base mainnet, real funds.** Every run this repo has ever
+made is listed, so no two accounts of the project can disagree. All were
+unattended, with no human in the loop at any point.
 
-A second, later run landed
-[`0x43ae139c…`](https://basescan.org/tx/0x43ae139cf8e1cf396abf21d5a5dbf2f0e956229c78eff4e080fc98709292067b)
-— the one the hackathon submission quotes balances for. Both are real, both were
-relayer-sponsored, and both are listed here so the two accounts cannot disagree.
-
-Those transactions were produced by `bin/demo.ts` in this repo, unattended, with
-no human in the loop at any point.
+| Transaction | Produced by | What it shows |
+| --- | --- | --- |
+| [`0xdef6e31b…`](https://basescan.org/tx/0xdef6e31bd0dcfcecff88f41bd89c7f19fd96c981b4f2f6e48d3c1645f8b30b1c) | `bin/demo.ts` | the guard executing for real |
+| [`0x43ae139c…`](https://basescan.org/tx/0x43ae139cf8e1cf396abf21d5a5dbf2f0e956229c78eff4e080fc98709292067b) | `bin/demo.ts` | the recorded run whose balance deltas the submission quotes |
+| [`0x722aa021…`](https://basescan.org/tx/0x722aa0213f3620beb1708aa3d7b7282bd1f2f5f7b394904479dd5c903412f620) | `bin/mcp-demo.ts` | a tool call **over MCP** reaching the chain — block 49198573, receipt status `0x1` |
 
 ---
 
@@ -57,6 +56,57 @@ Every phase is appended to a **hash-chained JSONL ledger**, so an operator who
 was not watching can verify afterwards that nothing was inserted, edited, or
 dropped: each record commits to `sha256(prevHash + canonicalJSON(record))`.
 
+## The model cannot raise its own limit
+
+As a library, the guard asks the agent's *code* to call it. That is fine when you
+wrote the agent. It is worthless when the agent is a model with tools: if the
+tool is KeeperHub's execute endpoint, then the spend limit lives in the prompt,
+and a prompt is a suggestion.
+
+So the guard is also an **MCP server**. The model never sees an execute endpoint.
+It sees `keeperhub_execute_transfer`, and the cap it cannot exceed is enforced in
+a different process, loaded from the environment before the first token was
+generated. A jailbroken system prompt, an injected instruction in a web page the
+agent just read, and an honest arithmetic mistake all hit the same wall — and all
+three land in the same hash-chained ledger the operator reads afterwards.
+
+```jsonc
+// claude_desktop_config.json / .mcp.json / any MCP client
+{
+  "mcpServers": {
+    "keeperguard": {
+      "command": "bun",
+      "args": ["/path/to/keeperguard/bin/mcp-server.ts"],
+      "env": {
+        "KEEPERHUB_API_KEY": "kh_…",
+        "KEEPERGUARD_MAX_PER_ACTION": "0.0001",
+        "KEEPERGUARD_MAX_PER_DAY": "0.0005",
+        "KEEPERGUARD_ALLOWED_DESTINATIONS": "0xabc…,0xdef…",
+        "KEEPERGUARD_LEDGER": "/var/lib/keeperguard/audit.jsonl"
+      }
+    }
+  }
+}
+```
+
+Four tools, and the boundary is the point:
+
+| Tool | Does |
+| --- | --- |
+| `keeperhub_execute_transfer` | policy → simulate → broadcast under the derived key → settle |
+| `keeperhub_execute_contract_call` | same path, for a function call |
+| `keeperhub_check_policy` | prices an action offline: the caps, the remaining 24h allowance, the exact refusal reasons |
+| `keeperhub_audit_log` | the ledger, recomputed — including every refusal |
+
+It **fails closed**: a server started without `KEEPERGUARD_MAX_PER_ACTION` and
+`KEEPERGUARD_MAX_PER_DAY` exits before it speaks protocol, because a guard with
+an implicit "unlimited" default reads as protection while being none.
+
+Refusals come back as tool *errors*, not protocol errors, on purpose — the model
+should read `value 1 exceeds maxValuePerAction 0.00005` and retry smaller rather
+than lose the connection. Asking twice does not help it: `keeperhub_check_policy`
+is the same `guard.check()` the executor runs.
+
 ## Why the key is derived, not generated
 
 ```ts
@@ -97,19 +147,35 @@ Both rows were observed live against `app.keeperhub.com`, not read from docs.
 
 ```bash
 bun install
-bun test                                  # 15 tests, no network
-KEEPERHUB_API_KEY=kh_… bun bin/demo.ts    # real transaction, real funds
+bun test                                     # 22 tests, no network
+KEEPERHUB_API_KEY=kh_… bun bin/demo.ts       # library path — real transaction, real funds
+KEEPERHUB_API_KEY=kh_… bun bin/mcp-demo.ts   # MCP path — same, driven by a real MCP client
 ```
 
-The demo runs four things: an over-cap decision that is refused offline, a real
-execution end to end, the same decision resubmitted three more ways, and a
-tamper check that deliberately edits the ledger to show verification failing.
+`bin/demo.ts` runs four things: an over-cap decision refused offline, a real
+execution end to end, the same decision resubmitted three more ways, and a tamper
+check that deliberately edits the ledger to show verification failing.
+
+`bin/mcp-demo.ts` spawns `bin/mcp-server.ts` over stdio, handshakes with the
+reference MCP client, lists the tools a model would see, gets an over-cap action
+refused, executes a zero-value transfer for real, submits the *identical* call a
+second time the way a retried agent turn does, and reads the ledger back. Its
+default action moves nothing, so it is safe to point at a funded account.
+
+Seven of the 22 tests are that same client talking real MCP over real stdio to
+`bin/mcp-server.ts` as a subprocess — no in-process shortcuts, because the thing
+worth testing is whether a client can reach the guard, not whether the functions
+compose. None of them touch the network: if a change ever let a refused decision
+reach the wire, they fail with a connection error instead of a refusal.
 
 Environment: `KEEPERHUB_API_KEY` (required, org key), `KEEPERGUARD_RECIPIENT`,
 `KEEPERGUARD_CHAIN_ID` (default `8453`), `KEEPERGUARD_LEDGER`, `KEEPERGUARD_EPOCH`.
 
-Output of the recorded run is in [`run-2026-07-27.jsonl`](run-2026-07-27.jsonl) —
-8 records, chain verifies, one transaction.
+Both recorded runs are committed: [`run-2026-07-27.jsonl`](run-2026-07-27.jsonl)
+(library path, 8 records, one transaction) and
+[`run-mcp-2026-07-27.jsonl`](run-mcp-2026-07-27.jsonl) (MCP path, 4 records —
+`simulated`, `broadcast`, `settled`, then `replayed` with no second
+transaction). Both chains verify.
 
 ## Library use
 
@@ -168,10 +234,13 @@ signed in with.
 
 ## Limitations
 
-- One execution recorded, on one chain. Gas sponsorship is an observation from
-  that single run, not a guarantee — do not size a treasury against it.
+- Three executions recorded, all on Base. Gas sponsorship is an observation from
+  those runs, not a guarantee — do not size a treasury against it.
 - The rolling daily cap is enforced against this ledger only. Two guards running
   against separate ledger files do not see each other's spend.
+- The ledger's append is a read-then-write, so two MCP servers pointed at the
+  *same* file can interleave and break the chain. One ledger per server process
+  is the supported configuration; a shared ledger needs a lock this does not have.
 - Ledger integrity is tamper-*evident*, not tamper-*proof*: the chain proves an
   edit occurred, it does not prevent one. Anchoring the head hash onchain is the
   obvious next step and is not implemented.
