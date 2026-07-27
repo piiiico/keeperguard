@@ -64,7 +64,18 @@ wrote the agent. It is worthless when the agent is a model with tools: if the
 tool is KeeperHub's execute endpoint, then the spend limit lives in the prompt,
 and a prompt is a suggestion.
 
-So the guard is also an **MCP server**. The model never sees an execute endpoint.
+That is not hypothetical. KeeperHub ships its own MCP server at
+`https://app.keeperhub.com/mcp` (`serverInfo: keeperhub 1.2.0`) — 35 tools,
+including `execute_transfer` and `execute_contract_call`. keeperguard is **not**
+an alternative to it. But `execute_transfer` takes `chain_id`, `to_address`,
+`amount`, `token_address`, `idempotency_key`: `amount` is a free parameter, with
+no per-action cap, no rolling daily cap and no destination allowlist in the schema
+the model is handed. And `idempotency_key` is optional and *supplied by the
+caller* — the one value a retried turn cannot reproduce, because the process that
+died was the one holding it. That stops a double-click, not a crash-loop.
+
+So the guard is also an **MCP server**, the policy layer in front of that one.
+The model never sees an execute endpoint.
 It sees `keeperhub_execute_transfer`, and the cap it cannot exceed is enforced in
 a different process, loaded from the environment before the first token was
 generated. A jailbroken system prompt, an injected instruction in a web page the
