@@ -14,6 +14,7 @@ unattended, with no human in the loop at any point.
 | [`0xdef6e31b…`](https://basescan.org/tx/0xdef6e31bd0dcfcecff88f41bd89c7f19fd96c981b4f2f6e48d3c1645f8b30b1c) | `bin/demo.ts` | the guard executing for real |
 | [`0x43ae139c…`](https://basescan.org/tx/0x43ae139cf8e1cf396abf21d5a5dbf2f0e956229c78eff4e080fc98709292067b) | `bin/demo.ts` | the recorded run whose balance deltas the submission quotes |
 | [`0x722aa021…`](https://basescan.org/tx/0x722aa0213f3620beb1708aa3d7b7282bd1f2f5f7b394904479dd5c903412f620) | `bin/mcp-demo.ts` | a tool call **over MCP** reaching the chain — block 49198573, receipt status `0x1` |
+| [`0x1526df9b…`](https://basescan.org/tx/0x1526df9b304ff703abb337b800479a6c36b4b2a290d90d5ce7f0d45e21ee9f51) | a fresh `git clone` of this repo, running `bin/mcp-demo.ts` with only `KEEPERHUB_API_KEY` set | that a stranger gets the same result — block 49198673, receipt status `0x1` |
 
 ---
 
